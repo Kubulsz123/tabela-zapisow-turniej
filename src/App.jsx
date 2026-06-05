@@ -23,6 +23,11 @@ function App() {
   // Anti-spam protection at the React component state level
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
+  // Live statistics derived from state
+  const cs2Count = teams.filter(t => t.game === 'Counter-Strike 2').length;
+  const bhCount = teams.filter(t => t.game === 'Brawlhalla').length;
+  const rlCount = teams.filter(t => t.game === 'Rocket League').length;
+
   // Firebase listener - fetches data in real time
   useEffect(() => {
     const q = collection(db, "druzyny");
@@ -81,10 +86,11 @@ function App() {
     try {
       const druzynyRef = collection(db, "druzyny");
 
-      // 2. Globalny limit 100 drużyn
-      const allTeamsSnapshot = await getDocs(druzynyRef);
-      if (allTeamsSnapshot.size >= 100) {
-        alert("Brak wolnych miejsc! Osiągnięto limit 100 drużyn.");
+      // 2. LIMIT 96 DRUŻYN PER GRA (Osobny dla każdej dyscypliny)
+      const gameLimitQuery = query(druzynyRef, where("game", "==", game));
+      const gameSnapshot = await getDocs(gameLimitQuery);
+      if (gameSnapshot.size >= 96) {
+        alert(`Brak wolnych miejsc! Osiągnięto maksymalny limit 96 drużyn dla gry ${game}.`);
         return;
       }
 
@@ -97,7 +103,6 @@ function App() {
       }
 
       // 4. GLOBAL PLAYER CHECK: Is anyone already playing?
-      // Firebase needs an OR-style query to check whether p1 or p2 exists in player1 or player2 fields
       const playersQuery = query(
         druzynyRef, 
         or(
@@ -155,6 +160,26 @@ function App() {
       <h1>🎮 Turnieje na Dzień Dziecka 🕹️</h1>
       <div className="subtitle">Gry startują jednocześnie. Gracze mogą być z różnych klas, ale każdy może grać tylko raz!</div>
 
+      {/* LIVE LIMIT STATS TILES */}
+      <div className="limit-stats">
+        <div className="stat-box">
+          <span>Counter-Strike 2</span>
+          <strong>{cs2Count} / 96</strong>
+        </div>
+        <div className="stat-box">
+          <span>Brawlhalla</span>
+          <strong>{bhCount} / 96</strong>
+        </div>
+        <div className="stat-box">
+          <span>Rocket League</span>
+          <strong>{rlCount} / 96</strong>
+        </div>
+        <div className="stat-box total">
+          <span>Wszystkie zapisy</span>
+          <strong>{teams.length}</strong>
+        </div>
+      </div>
+
       <div className="layout">
         {/* FORM */}
         <div className="form-section">
@@ -201,7 +226,7 @@ function App() {
 
         {/* TEAM LIST */}
         <div className="list-section">
-          <h2>Zapisane Drużyny <span className="counter">Suma: {teams.length} / 100</span></h2>
+          <h2>Zapisane Drużyny</h2>
 
           <div className="filters">
             {['all', 'Counter-Strike 2', 'Brawlhalla', 'Rocket League'].map(filter => (
